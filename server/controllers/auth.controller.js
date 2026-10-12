@@ -101,6 +101,13 @@ const login = async (req, res) => {
 };
 
 
+const verifyToken = (req, res) => {
+    return res.status(200).json({
+        message: "Token verified successfully"
+    });
+};
+
+
 const getMe = async (req,res)=>{
     try {
 const user = await User.findById(req.userId)
@@ -136,5 +143,6 @@ module.exports = {
     signUp,
     login,
     getMe,
-    logout
+    logout,
+    verifyToken
 };
