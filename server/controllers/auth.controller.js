@@ -1,7 +1,8 @@
+
 const User = require("../models/user.model");
 const { hashPassword, comparePassword } = require("../utils/password");
-const {generateToken} = require("../utils/token")
- 
+const { generateToken } = require("../utils/token");
+
 const signUp = async (req, res) => {
     try {
         const { name, email, password } = req.body;
@@ -28,14 +29,7 @@ const signUp = async (req, res) => {
             password: hashedPassword
         });
 
-        const token = generateToken(user._id);
-
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000
-        });
+        
 
         return res.status(201).json({
             message: "User registered successfully",
@@ -58,6 +52,12 @@ const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        if (!email || !password) {
+            return res.status(400).json({
+                message: "Email and password are required"
+            });
+        }
+
         const user = await User.findOne({ email });
 
         if (!user) {
@@ -66,7 +66,10 @@ const login = async (req, res) => {
             });
         }
 
-        const isMatch = await comparePassword(password, user.password);
+        const isMatch = await comparePassword(
+            password,
+            user.password
+        );
 
         if (!isMatch) {
             return res.status(401).json({
@@ -95,37 +98,38 @@ const login = async (req, res) => {
 
     } catch (error) {
         return res.status(500).json({
-            message: "error.message"
+            message: "Internal server error"
         });
     }
 };
 
 
-const verifyToken = (req, res) => {
-    return res.status(200).json({
-        message: "Token verified successfully"
-    });
-};
-
-
-const getMe = async (req,res)=>{
+const verifyMe = async (req, res) => {
     try {
-const user = await User.findById(req.userId)
-    .select("-password");
+        const user = await User.findById(req.userId)
+            .select("-password");
 
-        if(!user){
+        if (!user) {
             return res.status(404).json({
-                message :"User not found"
-            })
+                isAuthenticated: false,
+                message: "User not found"
+            });
         }
-            return res.status(200).json({user})
-        
+
+        return res.status(200).json({
+            isAuthenticated: true,
+            message: "User verified successfully",
+            user
+        });
+
     } catch (error) {
         return res.status(500).json({
-            message : "Internal server error"
-        })
+            isAuthenticated: false,
+            message: "Internal server error"
+        });
     }
-}
+};
+
 
 const logout = (req, res) => {
     res.clearCookie("token", {
@@ -142,7 +146,6 @@ const logout = (req, res) => {
 module.exports = {
     signUp,
     login,
-    getMe,
-    logout,
-    verifyToken
+    verifyMe,
+    logout
 };

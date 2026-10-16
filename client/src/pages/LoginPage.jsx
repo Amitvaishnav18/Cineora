@@ -1,5 +1,7 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+
+import React, { useEffect, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import Cookie from 'js-cookie' ;       
 import {
   UserRound,
   TicketPercent,
@@ -7,14 +9,85 @@ import {
   Crown,
   ArrowRight,
   LockKeyhole,
-} from 'lucide-react';
+  LoaderCircle,
+} from "lucide-react";
+
+import { login, verifyMe } from "../Services/api/authApi";
 
 function LoginPage() {
+  const navigate = useNavigate();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("");
+  const [userId, setUserId] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  
+  useEffect(() => {
+    if (isAuthenticated === true && role === "customer") {
+      navigate("/", { replace: true });
+    }
+  }, [isAuthenticated, role, navigate]);
+
+ const handleLogin = async () => {
+  setError("");
+
+  if (!email.trim() || !password) {
+    setError("Please enter your email and password.");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    await login({
+      email: email.trim(),
+      password,
+    });
+
+    const verifyResponse = await verifyMe();
+
+    if (verifyResponse.data.isAuthenticated === true) {
+      const user = verifyResponse.data.user;
+
+      if (!user || !user.name || !user.role || !user._id) {
+        setError("User details are missing from the server response.");
+        return;
+      }
+
+      setName(user.name);
+      setRole(user.role);
+      setUserId(user._id);
+
+      Cookie.set("name", user.name);
+      Cookie.set("role", user.role);
+      Cookie.set("userId", user._id);
+
+      setIsAuthenticated(true);
+    } else {
+      setIsAuthenticated(false);
+      setError("Authentication verification failed.");
+    }
+  } catch (error) {
+    setIsAuthenticated(false);
+
+    setError(
+      error.response?.data?.message ||
+        "Login or verification failed. Please try again."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <div className="h-dvh overflow-hidden bg-bg-lavender p-3 sm:p-5">
       <div className="mx-auto flex h-full `max-w-[1500px]` flex-col overflow-hidden rounded-2xl border border-border-subtle bg-bg-white">
-
-
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-border-subtle px-5 sm:px-8">
           <img
             src="/cineora-logo.svg"
@@ -30,10 +103,7 @@ function LoginPage() {
           </NavLink>
         </header>
 
-
         <main className="grid min-h-0 flex-1 grid-cols-2 items-center gap-6 overflow-hidden px-6 py-4 lg:gap-12 lg:px-12">
-
-
           <section className="mx-auto w-full `max-w-[500px]`">
             <h1 className="text-28 font-semibold text-text-dark">
               Welcome Back!
@@ -42,7 +112,6 @@ function LoginPage() {
             <p className="mt-2 text-16 text-text-charcoal">
               Your next movie experience awaits.
             </p>
-
 
             <div className="mt-6 flex items-center gap-4 rounded-xl border border-text-purple/30 bg-bg-lavender/60 p-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-bg-white text-text-purple">
@@ -62,7 +131,6 @@ function LoginPage() {
               </div>
             </div>
 
-
             <div className="mt-4 flex items-center gap-4 rounded-xl border border-border-muted bg-bg-white p-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-bg-lavender text-text-purple">
                 <CreditCard size={28} strokeWidth={1.8} />
@@ -80,7 +148,6 @@ function LoginPage() {
                 </p>
               </div>
             </div>
-
 
             <div className="mt-4 flex items-center gap-4 rounded-xl border border-text-purple/30 bg-bg-lavender/60 p-4">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-bg-white text-text-purple">
@@ -101,11 +168,8 @@ function LoginPage() {
             </div>
           </section>
 
-
           <section className="mx-auto w-full `max-w-[440px]`">
             <div className="rounded-2xl border border-border-subtle bg-bg-white p-6 shadow-[0_8px_30px_rgba(35,18,104,0.10)] lg:p-8">
-
-
               <div className="mb-7">
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-bg-lavender text-text-purple">
                   <UserRound size={25} strokeWidth={1.8} />
@@ -120,10 +184,7 @@ function LoginPage() {
                 </p>
               </div>
 
-
               <div className="space-y-5">
-
-
                 <div>
                   <label className="mb-2 block text-14 font-medium text-text-charcoal">
                     Email Address
@@ -131,11 +192,12 @@ function LoginPage() {
 
                   <input
                     type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email address"
-                    className="h-12 w-full rounded-lg border border-border-slate bg-bg-white px-4 text-14 text-text-dark outline-none transition placeholder:text-text-gray focus:border-text-purple focus:ring-2 focus:ring-text-purple/15"
+                    className="h-12 w-full rounded-lg border border-border-slate bg-bg-white px-4"
                   />
                 </div>
-
 
                 <div>
                   <div className="mb-2 flex items-center justify-between">
@@ -143,11 +205,9 @@ function LoginPage() {
                       Password
                     </label>
 
-
-
                     <NavLink
-                      to="/forgot password"
-                      className="text-13 font-medium text-text-purple hover: underline"
+                      to="/forgot-password"
+                      className="text-13 font-medium text-text-purple hover:underline"
                     >
                       Forgot password?
                     </NavLink>
@@ -156,8 +216,10 @@ function LoginPage() {
                   <div className="relative">
                     <input
                       type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
-                      className="h-12 w-full rounded-lg border border-border-slate bg-bg-white px-4 pr-12 text-14 text-text-dark outline-none transition placeholder:text-text-gray focus:border-text-purple focus:ring-2 focus:ring-text-purple/15"
+                      className="h-12 w-full rounded-lg border border-border-slate bg-bg-white px-4"
                     />
 
                     <LockKeyhole
@@ -168,7 +230,6 @@ function LoginPage() {
                   </div>
                 </div>
 
-               
                 <label className="flex cursor-pointer items-center gap-2 text-14 text-text-charcoal">
                   <input
                     type="checkbox"
@@ -177,37 +238,43 @@ function LoginPage() {
                   Remember me
                 </label>
 
-                
+                {error && (
+                  <p role="alert" className="text-sm text-red-600">
+                    {error}
+                  </p>
+                )}
+
                 <button
+                  onClick={handleLogin}
                   type="button"
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-text-purple text-16 font-semibold text-text-white shadow-md shadow-text-purple/20 transition-colors hover:bg-text-deep-purple"
+                  disabled={loading}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-text-purple text-16 font-semibold text-text-white shadow-md shadow-text-purple/20 transition-colors hover:bg-text-deep-purple disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Login
-                  <ArrowRight size={18} />
+                  {loading ? (
+                    <>
+                      <LoaderCircle size={20} className="animate-spin" />
+                      Logging in...
+                    </>
+                  ) : (
+                    <>
+                      Login
+                      <ArrowRight size={18} />
+                    </>
+                  )}
                 </button>
               </div>
 
-              
-
-
               <p className="mt-4 text-center text-14 text-text-charcoal">
-                Don't have an account?{' '}
+                Don't have an account?{""}
                 <NavLink
                   to="/signup"
-                  className={({ isActive }) =>
-                    `font-semibold transition-colors ${isActive
-                      ? 'text-text-deep-purple'
-                      : 'text-text-purple hover:underline'
-                    }`
-                  }
+                  className="font-semibold text-text-purple hover:underline"
                 >
                   Sign up
                 </NavLink>
               </p>
-
             </div>
           </section>
-
         </main>
       </div>
     </div>
